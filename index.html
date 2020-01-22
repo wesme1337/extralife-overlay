@@ -98,8 +98,9 @@
 
 									if(this.config.enableConfetti) {
 										confetti({
-											particleCount: 100,
-											spread: 70,
+											particleCount: this.randomNum(75, 120),
+											angle: this.randomNum(30,110)
+											spread: this.randomNum(50,80),
 											origin: {
 												x: .15,
 												y: 1
@@ -134,6 +135,9 @@
 							queue: false,
 							actionText: null
 						})
+					},
+					randomNum: function(min, max) {
+						return Math.random() * (max - min) + min;
 					}
 				},
 				mounted() {
