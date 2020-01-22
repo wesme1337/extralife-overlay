@@ -1,0 +1,31 @@
+.header-bar {
+	background-color: #1a4c6d;
+	padding-top: 5px;
+}
+
+.header-bar img {
+	max-height: 35px;
+
+}
+
+.right-header-bar {
+	text-align: right;
+}
+
+.inline-element {
+	display: inline-block;
+}
+
+
+.margin-element {
+	margin: 15px;
+}
+
+#bottom-right {
+	right: 0;
+	bottom: 0;
+	position: absolute;
+	margin:15px;
+	width:300px;
+	height:150px;
+}

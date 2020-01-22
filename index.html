@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+		<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+		<script src="https://unpkg.com/buefy/dist/buefy.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.0.3/dist/confetti.browser.min.js"></script>
+
+		<link rel="stylesheet" href="https://unpkg.com/buefy/dist/buefy.min.css">
+		<link rel="stylesheet" href="assets/css/styles.css">
+	</head>
+	<body>
+		<div id="app">
+			<div class="columns header-bar is-vcentered">
+				<div class="column">
+					<img src="assets/img/extralife-logo.svg" class="image" alt="Logo" style="margin-left: 15px;" />
+				</div>
+				<div class="column">
+					<b-progress style="inline-element" size="is-large" type="is-danger" :value="entity.data.sumDonations / entity.data.fundraisingGoal * 100" show-value>
+						<span class="has-text-dark">Total Raised: {{ entity.data.sumDonations | formatCurrency }} / Goal: {{ entity.data.fundraisingGoal | formatCurrency }}</span>
+					</b-progress>
+				</div>
+				<div class="column has-text-right">
+					<!-- <div v-for="donation in donations.data" v-bind:key="donation.donationID">
+						{{ donation.amount | formatCurrency }}
+					</div> -->
+					<div style="margin-right: 15px;">
+						<span class="has-text-white margin-right inline-element is-size-5">{{entity.data.displayName}}</span>
+						<img class="image inline-element" v-bind:src="'https:'+entity.data.avatarImageURL" style="vertical-align: middle;" />
+					</div>
+				</div>
+			</div>
+			<template v-if="config.enableActivity">
+				<div id="bottom-right">
+					<h4 class="has-text-right is-size-4">Activity</h4>
+					<div v-for="activity in activities.data" class="has-text-right">
+						<div v-if="activity.type == 'donation'">
+							{{ activity.title }} donated {{ activity.amount | formatCurrency }}
+						</div>
+						<div v-else-if="activity.type == 'participantBadge'">
+							Badge Earned: {{ activity.title }}
+						</div>
+					</div>
+				</div>
+			</template>
+			<!-- {{ donations.data }} -->
+		</div>
+		<script>
+			new Vue({
+				el: '#app',
+				data: {
+					thermo: 100,
+					config: {
+						enableActivity: true,
+						enableConfetti: true,
+						enableNotifications: true,
+						showTopDonors: true,
+						entityType: "participants",
+						entityID: '19400'
+					},
+					entity: {
+						data: [],
+						etag: null
+					},
+					donations: {
+						data: []
+					},
+					activities: {
+						data: [],
+						etag: null
+					}
+				},
+				methods: {
+					getDonations: function(limit) {
+						return axios.get('https://try.donordrive.com/api/'+this.config.entityType+'/'+this.config.entityID+'/donations?'+encodeURIComponent('createdDateUTC DESC')+'&limit='+limit).then(response => {
+							this.donations.data = response.data;
+						});
+					},
+					getEntity: function() {
+						return axios.get(
+							'https://try.donordrive.com/api/'+this.config.entityType+'/'+this.config.entityID,
+							{
+								headers: { 'if-none-match': this.entity.etag }
+							}
+							).then(response => {
+								this.config.etag = response.headers.etag;
+								if(this.entity.data.numDonations < response.data.numDonations) {
+									var newDonations = response.data.numDonations - this.entity.data.numDonations;
+
+									console.log(newDonations);
+
+									this.getDonations(newDonations).then(response => {
+										console.log('yeet');
+										for(i in this.donations.data) {
+											this.notifyDonation(this.donations.data[i].displayName, this.donations.data[i].amount);
+										}
+									});
+
+									if(this.config.enableConfetti) {
+										confetti({
+											particleCount: 100,
+											spread: 70,
+											origin: {
+												x: .15,
+												y: 1
+											}
+										});
+									}
+								}
+
+								this.entity.etag = response.headers.etag;
+								this.entity.data = response.data;
+						}).catch(function (error) {
+							if (error.response) {
+								//Do nothing for 304
+							}
+						});
+					},
+					getActivity: function() {
+						return axios.get('https://try.donordrive.com/api/'+this.config.entityType+'/'+this.config.entityID+'/activity').then(response => {
+							this.activities.data = response.data;
+						}).catch(function (error) {
+							if (error.response) {
+								//Do nothing for 304
+							}
+						});
+					},
+					notifyDonation: function(name, amount) {
+						this.$buefy.snackbar.open({
+							duration: 5000,
+							message: name+' has made a $'+amount+' donation.',
+							type: 'is-white',
+							position: 'is-bottom-left',
+							queue: false,
+							actionText: null
+						})
+					}
+				},
+				mounted() {
+					this.getEntity();
+					var self = this;
+
+					var pollEntity = function(){
+						self.getEntity();
+
+						setTimeout(pollEntity, 15000);
+					}
+					setTimeout(pollEntity, 15000);
+
+					if(this.config.enableActivity) {
+						this.getActivity();
+
+						var pollActivity = function(){
+							self.getActivity();
+
+							setTimeout(pollActivity, 15000);
+						}
+						setTimeout(pollActivity, 15000);
+					}
+				},
+				filters: {
+					formatCurrency: function(value) {
+						if (!value) return '';
+
+						return '$' + value.toLocaleString('en', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+					}
+				}
+			});
+		</script>
+	</body>
+</html>
